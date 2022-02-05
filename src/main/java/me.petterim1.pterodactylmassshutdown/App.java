@@ -130,6 +130,14 @@ public class App {
             action = scanner.nextLine();
         }
         action = action.toLowerCase();
+        boolean ignoreOffline = false;
+        if (action.equals("start") || action.equals("restart")) {
+            System.out.println("Do you want to ignore servers with (offline) in their name? (yes/no)");
+            if ("yes".equalsIgnoreCase(scanner.nextLine())) {
+                ignoreOffline = true;
+                System.out.println("Ignoring servers that are marked to stay offline");
+            }
+        }
         String message = null;
         boolean sendMessage = false;
         if (!action.equals("start")) {
@@ -140,7 +148,7 @@ public class App {
                 System.out.println("No message");
             }
         }
-        System.out.println("Do you want to " + action + " all servers? (yes/no)");
+        System.out.println("Do you want to " + action + " the servers now? (yes/no)");
         if (!"yes".equalsIgnoreCase(scanner.nextLine())) {
             System.out.println("Aborting operation");
             return;
@@ -148,6 +156,13 @@ public class App {
         if (sendMessage) {
             System.out.println("Broadcasting the message...");
             for (String server : servers.keySet()) {
+                if (ignoreOffline) {
+                    String srv = servers.get(server);
+                    if (srv != null && srv.toLowerCase().startsWith("(offline)")) {
+                        System.out.println("Skipping a server that was marked to stay offline: " + srv);
+                        continue;
+                    }
+                }
                 try {
                     String requestUrl = host + "/api/client/servers/" + server + "/command";
                     System.out.println("Connecting to " + requestUrl);
@@ -170,7 +185,8 @@ public class App {
                 }
             }
             try {
-                Thread.sleep(5000);
+                System.out.println("Waiting a moment...");
+                Thread.sleep(8000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -178,6 +194,13 @@ public class App {
         int count = 0;
         System.out.println("Running the power action...");
         for (String server : servers.keySet()) {
+            if (ignoreOffline) {
+                String srv = servers.get(server);
+                if (srv != null && srv.toLowerCase().startsWith("(offline)")) {
+                    System.out.println("Skipping a server that was marked to stay offline: " + srv);
+                    continue;
+                }
+            }
             try {
                 String requestUrl = host + "/api/client/servers/" + server + "/power";
                 System.out.println("Connecting to " + requestUrl);
