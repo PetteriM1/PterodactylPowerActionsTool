@@ -17,13 +17,12 @@ import java.util.*;
 public class App {
 
     public static void main(String[] args) {
-        System.out.println("PterodactylPowerActionsTool version 1.0");
+        System.out.println("Server power actions tool for Pterodactyl Panel");
         System.out.println("Made by PetteriM1");
         System.out.println("---------------------");
         Scanner scanner = new Scanner(System.in);
         String host = null;
-        String clientToken = null;
-        String appToken = null;
+        String token = null;
         System.out.println("Loading host from config...");
         try {
             BufferedReader in = new BufferedReader(new FileReader(System.getProperty("user.dir") + File.separatorChar + "host.txt"));
@@ -59,38 +58,30 @@ public class App {
                 e.printStackTrace();
             }
         }
-        System.out.println("Loading saved API tokens...");
-        String token = null;
+        System.out.println("Loading saved API token...");
         try {
-            BufferedReader in = new BufferedReader(new FileReader(System.getProperty("user.dir") + File.separatorChar + "tokens.txt"));
+            BufferedReader in = new BufferedReader(new FileReader(System.getProperty("user.dir") + File.separatorChar + "token.txt"));
             token = in.readLine();
             in.close();
         } catch (Exception e) {
         }
         needsSaving = false;
-        if (token == null || token.isEmpty() || token.split("//").length != 2) {
-            System.out.println("No saved API tokens found");
+        if (token == null || token.isEmpty()) {
+            System.out.println("No saved API token found");
             needsSaving = true;
-        } else {
-            clientToken = token.split("//")[0];
-            appToken = token.split("//")[1];
         }
-        while (clientToken == null || clientToken.isEmpty()) {
-            System.out.println("Please input your client API token");
-            clientToken = scanner.nextLine();
-        }
-        while (appToken == null || appToken.isEmpty()) {
-            System.out.println("Please input your application API token");
-            appToken = scanner.nextLine();
+        while (token == null || token.isEmpty()) {
+            System.out.println("Please input your API token");
+            token = scanner.nextLine();
         }
         if (needsSaving) {
-            System.out.println("Saving API tokens...");
+            System.out.println("Saving the API token...");
             try {
-                BufferedWriter out = new BufferedWriter(new FileWriter(System.getProperty("user.dir") + File.separatorChar + "tokens.txt"));
-                out.write(clientToken + "//" + appToken);
+                BufferedWriter out = new BufferedWriter(new FileWriter(System.getProperty("user.dir") + File.separatorChar + "token.txt"));
+                out.write(token);
                 out.close();
             } catch (Exception e) {
-                System.out.println("Failed to save the tokens");
+                System.out.println("Failed to save the API token");
                 e.printStackTrace();
             }
         }
@@ -103,7 +94,7 @@ public class App {
             HttpGet requestGet = new HttpGet(requestUrl);
             requestGet.setHeader("Accept", "application/json");
             requestGet.setHeader("Content-Type", "application/json");
-            requestGet.setHeader("Authorization", "Bearer " + appToken);
+            requestGet.setHeader("Authorization", "Bearer " + token);
             HttpResponse response = client.execute(requestGet);
             if (response.getStatusLine().getStatusCode() != 200) {
                 System.out.println("Failed: " + EntityUtils.toString(response.getEntity()));
@@ -169,7 +160,7 @@ public class App {
                     HttpPost requestPost = new HttpPost(requestUrl);
                     requestPost.setHeader("Accept", "application/json");
                     requestPost.setHeader("Content-Type", "application/json");
-                    requestPost.setHeader("Authorization", "Bearer " + clientToken);
+                    requestPost.setHeader("Authorization", "Bearer " + token);
                     requestPost.setEntity(new StringEntity("{\n  \"command\": \"say " + message + "\"\n}"));
                     HttpResponse response = client.execute(requestPost);
                     if (response.getStatusLine().getStatusCode() == 204) {
@@ -207,7 +198,7 @@ public class App {
                 HttpPost requestPost = new HttpPost(requestUrl);
                 requestPost.setHeader("Accept", "application/json");
                 requestPost.setHeader("Content-Type", "application/json");
-                requestPost.setHeader("Authorization", "Bearer " + clientToken);
+                requestPost.setHeader("Authorization", "Bearer " + token);
                 requestPost.setEntity(new StringEntity("{\n  \"signal\": \"" + action + "\"\n}"));
                 HttpResponse response = client.execute(requestPost);
                 if (response.getStatusLine().getStatusCode() == 204) {
