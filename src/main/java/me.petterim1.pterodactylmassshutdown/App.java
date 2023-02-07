@@ -131,13 +131,33 @@ public class App {
         }
         String message = null;
         boolean sendMessage = false;
+        int repeatMessage = 1;
         if (!action.equals("start")) {
-            System.out.println("Do you want to broadcast a message using 'say' command on servers supporting it? Enter a message or press enter to skip");
+            System.out.println("Do you want to broadcast a message using 'say' command on servers supporting it? Enter a message or press enter to skip (You will be asked if you want to repeat the message x times next)");
             message = scanner.nextLine();
             sendMessage = message != null && !message.trim().isEmpty();
             if (!sendMessage) {
                 System.out.println("No message");
+            } else {
+                while (true) {
+                    System.out.println("How many times you want the message to be sent with a 10 seconds delay? Enter a number or press enter to use the default (1)");
+                    String number = scanner.nextLine();
+                    if (number == null || number.trim().isEmpty()) {
+                        break;
+                    }
+                    try {
+                        repeatMessage = Integer.parseInt(number);
+                        if (repeatMessage > 0) {
+                            break;
+                        }
+                    } catch (NumberFormatException ignore) {
+                    }
+                    System.out.println("The number must be a positive integer");
+                }
             }
+        }
+        if (sendMessage) {
+            System.out.println("Message '" + message + "' will be broadcasted " + repeatMessage + " times");
         }
         System.out.println("Do you want to " + action + " the servers now? (yes/no)");
         if (!"yes".equalsIgnoreCase(scanner.nextLine())) {
@@ -145,41 +165,43 @@ public class App {
             return;
         }
         if (sendMessage) {
-            System.out.println("Broadcasting the message...");
-            for (String server : servers.keySet()) {
-                if (ignoreOffline) {
-                    String srv = servers.get(server);
-                    if (srv != null && srv.toLowerCase().startsWith("(offline)")) {
-                        System.out.println("Skipping a server that was marked to stay offline: " + srv);
-                        continue;
+            for (int messageCount = 1; messageCount <= repeatMessage; messageCount++) {
+                System.out.println("Broadcasting the message (" + messageCount + "/" + repeatMessage + ")...");
+                for (String server : servers.keySet()) {
+                    if (ignoreOffline) {
+                        String srv = servers.get(server);
+                        if (srv != null && srv.toLowerCase().startsWith("(offline)")) {
+                            System.out.println("Skipping a server that was marked to stay offline: " + srv);
+                            continue;
+                        }
+                    }
+                    try {
+                        String requestUrl = host + "/api/client/servers/" + server + "/command";
+                        System.out.println("Connecting to " + requestUrl);
+                        HttpPost requestPost = new HttpPost(requestUrl);
+                        requestPost.setHeader("Accept", "application/json");
+                        requestPost.setHeader("Content-Type", "application/json");
+                        requestPost.setHeader("Authorization", "Bearer " + token);
+                        requestPost.setEntity(new StringEntity("{\n  \"command\": \"say " + message + "\"\n}"));
+                        HttpResponse response = client.execute(requestPost);
+                        if (response.getStatusLine().getStatusCode() == 204) {
+                            System.out.println("Done! Message broadcasted successfully on " + servers.get(server));
+                        } else if (response.getStatusLine().getStatusCode() == 502) {
+                            System.out.println("Status 502: " + servers.get(server) + " is probably offline");
+                        } else {
+                            System.out.println("Failed: " + EntityUtils.toString(response.getEntity()));
+                            System.out.println(response);
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                     }
                 }
                 try {
-                    String requestUrl = host + "/api/client/servers/" + server + "/command";
-                    System.out.println("Connecting to " + requestUrl);
-                    HttpPost requestPost = new HttpPost(requestUrl);
-                    requestPost.setHeader("Accept", "application/json");
-                    requestPost.setHeader("Content-Type", "application/json");
-                    requestPost.setHeader("Authorization", "Bearer " + token);
-                    requestPost.setEntity(new StringEntity("{\n  \"command\": \"say " + message + "\"\n}"));
-                    HttpResponse response = client.execute(requestPost);
-                    if (response.getStatusLine().getStatusCode() == 204) {
-                        System.out.println("Done! Message broadcasted successfully on " + servers.get(server));
-                    } else if (response.getStatusLine().getStatusCode() == 502) {
-                        System.out.println("Status 502: " + servers.get(server) + " is probably offline");
-                    } else {
-                        System.out.println("Failed: " + EntityUtils.toString(response.getEntity()));
-                        System.out.println(response);
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
+                    System.out.println("Waiting 10 seconds...");
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-            }
-            try {
-                System.out.println("Waiting a moment...");
-                Thread.sleep(8000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         }
         int count = 0;
@@ -212,7 +234,7 @@ public class App {
                 ex.printStackTrace();
             }
         }
-        System.out.println("All operations done! Ran power action '" + action + "' on " + count + '/' + servers.size() + " servers at " + host);
+        System.out.println("All operations done! Ran power action '" + action + "' on " + count + "/" + servers.size() + " servers at " + host);
     }
 
     private static class MapTypeToken extends TypeToken<Map<String, Object>> {
