@@ -104,8 +104,38 @@ public class App {
             Map<String, Object> serverList = new Gson().fromJson(EntityUtils.toString(response.getEntity()), new MapTypeToken().getType());
             List<Map<?, ?>> serverData = (List<Map<?, ?>>) serverList.get("data");
             for (Map<?, ?> map : serverData) {
-                Map<?, ?> info = ((Map<?, ?>) map.get("attributes"));
-                servers.put((String) info.get("identifier"), (String) info.get("name"));
+                Map<?, ?> attributes = ((Map<?, ?>) map.get("attributes"));
+                servers.put((String) attributes.get("identifier"), (String) attributes.get("name"));
+            }
+            try {
+                Map<?, Map<?, ?>> meta = (Map<?, Map<?, ?>>) serverList.get("meta");
+                Map<?, ?> pagination = meta.get("pagination");
+                double totalPages = (double) pagination.get("total_pages");
+                int pages = (int) totalPages;
+                if (pages > 1) {
+                    for (int page = 2; page <= pages; page++) {
+                        requestUrl = host + "/api/application/servers?page=" + page;
+                        System.out.println("Connecting to " + requestUrl);
+                        requestGet = new HttpGet(requestUrl);
+                        requestGet.setHeader("Accept", "application/json");
+                        requestGet.setHeader("Content-Type", "application/json");
+                        requestGet.setHeader("Authorization", "Bearer " + token);
+                        response = client.execute(requestGet);
+                        if (response.getStatusLine().getStatusCode() != 200) {
+                            System.out.println("Failed: " + EntityUtils.toString(response.getEntity()));
+                            System.out.println(response);
+                            return;
+                        }
+                        serverList = new Gson().fromJson(EntityUtils.toString(response.getEntity()), new MapTypeToken().getType());
+                        serverData = (List<Map<?, ?>>) serverList.get("data");
+                        for (Map<?, ?> map : serverData) {
+                            Map<?, ?> attributes = ((Map<?, ?>) map.get("attributes"));
+                            servers.put((String) attributes.get("identifier"), (String) attributes.get("name"));
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
         } catch (Exception ex) {
             ex.printStackTrace();
